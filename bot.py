@@ -21,11 +21,15 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 EMAIL_USER = os.getenv('EMAIL_USER')
 EMAIL_PASS = os.getenv('EMAIL_PASS')
-client = discord.Client(fetch_offline_members=True)
+
 
 validation_tokens = {} # TODO: use a DB
 domain_role_map = {}
 
+intents = discord.Intents.default()
+intents.members = True
+
+client = discord.Client(intents=intents)
 
 guild = None
 @client.event
@@ -53,6 +57,7 @@ async def on_ready():
 
 @client.event
 async def on_member_join(member):
+    print(f'Sending message to {member.name}.')
     await member.create_dm()
     await member.dm_channel.send(
         f'Send me your .edu email address to get a role in {guild.name}'
