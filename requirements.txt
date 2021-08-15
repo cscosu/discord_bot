@@ -1,0 +1,3 @@
+pyjwt
+discord.py==1.5.1
+python-dotenv
