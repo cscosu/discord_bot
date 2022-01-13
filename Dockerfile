@@ -6,5 +6,7 @@ COPY requirements.txt bot.py schools.json .env ./
 RUN pip install --no-cache-dir -r requirements.txt && \
 rm requirements.txt
 
+ENV PYTHONUNBUFFERED=1
+
 # Disable asserts
 CMD ["python", "-O", "./bot.py"]

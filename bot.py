@@ -13,7 +13,13 @@ from types import SimpleNamespace
 import json
 
 # Email
-import smtplib, ssl
+import smtplib
+import ssl
+
+# Note to future maintainers: You really need to understand all of the code
+# here before making changes. It is fragile, hacky, and it is very easy
+# to introduce new bugs. Be very careful if the bot is ever going to
+# send user-controlled data (see reaction roles code).
 
 port = 465  # For SSL
 
@@ -88,9 +94,19 @@ async def on_message(message):
         return
 
     split = message.content.split()
-    if message.channel != message.author.dm_channel:
-        # Try to avoid leaking tokens
-        if len(split) > 0 and split[0] == "!connect":
+    print(f"{message.author.id} sent {split}")
+    if message.channel != message.author.dm_channel and len(split) > 0:
+        # Token was leaked in a public channel
+        if split[0] == "!connect":
+            if len(split) >= 2:
+                # Here, we are going to submit the token for them anyway
+                # since their token was already leaked :/
+                #
+                # There is still a small chance of race since this is all async
+                # but i feel like social engineering is more likely to succeed
+                # than the race.
+                await check_osuauth_token_and_give_role(message.author, split[1])
+
             await message.delete()
 
             member = await guild.fetch_member(message.author.id)
@@ -105,7 +121,7 @@ async def on_message(message):
         await check_osuauth_token_and_give_role(message.author, split[1])
         return
 
-    if split[0] == "!reaction_role":
+    if len(split) > 0 and split[0] == "!reaction_role":
         await make_reaction_role(message)
         return
 
@@ -128,7 +144,7 @@ async def make_reaction_role(message):
 
         i = message.content.find("```json")
         data = message.content[i:]
-        data = data[len("```json\n") :]
+        data = data[len("```json\n"):]
         data = data[: -len("```")]
         data = json.loads(data)
 
@@ -153,6 +169,8 @@ async def on_raw_reaction_add(event):
     user = client.get_user(event.user_id)
     member = event.member
 
+    # This is dangerous -- we better not ever let this bot send
+    # user-controlled data...
     if (
         message.author != client.user
         or not message.content.startswith(
