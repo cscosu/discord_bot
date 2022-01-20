@@ -182,7 +182,7 @@ async def on_raw_reaction_add(event):
 
     lines = message.content.split("\n")[1:]
     for line in lines:
-        line_reaction, role_name = line.strip().split()
+        line_reaction, role_name = line.strip().split(" ", 1)
 
         if str(emoji) == line_reaction:
             role = discord.utils.get(guild.roles, name=role_name)
@@ -212,7 +212,7 @@ async def on_raw_reaction_remove(event):
 
     lines = message.content.split("\n")[1:]
     for line in lines:
-        line_reaction, role_name = line.strip().split()
+        line_reaction, role_name = line.strip().split(" ", 1)
 
         if str(emoji) == line_reaction:
             role = discord.utils.get(guild.roles, name=role_name)
