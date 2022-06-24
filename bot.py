@@ -119,6 +119,7 @@ async def on_message(message):
                 )
         if split[0] == "!competition" and len(split) == 5:
             if message.channel.category_id == CTF_CATEGORY_ID and check_has_role(message.author, "Officers"):
+                # Step 1: Make the main channel for the CTF
                 title, description, username, password = split[1:5]
                 channel = await message.channel.category.create_text_channel(
                     title,
@@ -129,11 +130,72 @@ async def on_message(message):
                 for k, v in zip(("Username", "Password"), (f"`{username}`", f"`{password}`")):
                     embed.add_field(name=k, value=v, inline=False)
                 pinmessage = await channel.send(embed=embed)
+
+                # Step 2: Make the category for the CTF
+                ctf = message.channel.name
+                cat = None
+                live_ctf_position = 0
+
+                for category in client.guild.categories:
+                    if live_ctf_position <= 0:
+                        live_ctf_position += -1
+                    if category.id == CTF_CATEGORY_ID:
+                        live_ctf_position *= -1
+                
+                permissions = message.channel.overwrites
+                cat = await client.guild.create_category(
+                    title.lower() + " challenges",
+                    overwrites=permissions,
+                    position=live_ctf_position,
+                )
+
                 await pinmessage.pin()
                 await message.delete()
                 return
+            await message.channel.send(
+                embed=utils.create_embed("You need to be an officer in the CTF category")
+            )
+            return
         if split[0] == "!chal":
-            # TODO check if used in competition channel
+            if message.channel.category_id == CTF_CATEGORY_ID:
+                if len(split) == 1:
+                    await message.channel.send(
+                        embed=utils.create_embed("Must provide a challenge name")
+                    )
+                    return
+                if len(split) != 2:
+                    await message.channel.send(
+                        embed=utils.create_embed("There can be no spaces in the challenge name")
+                    )
+                    return
+                ctf_name = message.channel.name.lower()
+                chal_name = split[1]
+                for category in client.guild.categories:
+                    if category.name == ctf_name + " challenges":
+                        for chan in category.text_channels:
+                            if chan.name.lower() == chal_name.lower():
+                                await message.channel.send(
+                                    embed=utils.create_embed(
+                                        f"A channel for this challenge has already been created! Click [here](https://discordapp.com/channels/{GUILD}/{chan.id}/) to join the discussion."
+                                    )
+                                )
+                                return
+                        chan = await category.create_text_channel(
+                            chal_name,
+                            position=len(category.text_channels),
+                            topic=f"{message.channel.name}: {chalname}",
+                        )
+                        await message.channel.send(
+                            embed=utils.create_embed(
+                                f"Channel created! Click [here](https://discordapp.com/channels/{GUILD_ID}/{chan.id}/) to go there."
+                            )
+                        )
+                        return
+                await message.channel.send(
+                    embed=utils.create_embed(
+                        f"Could not find the category for this CTF"
+                    )
+                )
         return
 
     if len(split) == 2 and split[0] == "!connect":
