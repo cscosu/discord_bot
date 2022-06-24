@@ -33,6 +33,8 @@ EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
 JWT_SECRET = os.getenv("JWT_SECRET")
 GUILD_ID = os.getenv("GUILD_ID")
+CTF_CATEGORY_ID = os.getenv("CTF_CATEGORY_ID")
+CTF_ARCHIVE_CATEOGRY_ID = os.getenv("CTF_ARCHIVE_CATEOGRY_ID")
 
 DEBUG = os.getenv("DEBUG", False)
 
@@ -115,6 +117,23 @@ async def on_message(message):
                 await member.dm_channel.send(
                     f"DM me the message with !connect, don't post it publicly"
                 )
+        if split[0] == "!competition" and len(split) == 5:
+            if message.channel.category_id == CTF_CATEGORY_ID and check_has_role(message.author, "Officers"):
+                title, description, username, password = split[1:5]
+                channel = await message.channel.category.create_text_channel(
+                    title,
+                    position=0,
+                    topic=f"{title}\n==========\n{description}\n==========\nusername: {username}\n==========\nOfficers, type !archive to archive this channel.",
+                )
+                embed = discord.Embed(title=title, description=description, color=EMBED_COLOR)
+                for k, v in zip(("Username", "Password"), (f"`{username}`", f"`{password}`")):
+                    embed.add_field(name=k, value=v, inline=False)
+                pinmessage = await channel.send(embed=embed)
+                await pinmessage.pin()
+                await message.delete()
+                return
+        if split[0] == "!chal":
+            # TODO check if used in competition channel
         return
 
     if len(split) == 2 and split[0] == "!connect":
@@ -131,6 +150,12 @@ async def on_message(message):
 
     await message.author.dm_channel.send("Bad message")
 
+async def check_has_role(member, role_name):
+    roles = member.roles
+    for role in roles:
+        if role.name == role_name:
+            return True
+    return False
 
 async def make_reaction_role(message):
     if message.author.id != 633048088965021697:
