@@ -126,7 +126,7 @@ async def on_message(message):
                     position=0,
                     topic=f"{title}\n==========\n{description}\n==========\nusername: {username}\n==========\nOfficers, type !archive to archive this channel.",
                 )
-                embed = discord.Embed(title=title, description=description, color=EMBED_COLOR)
+                embed = discord.Embed(title=title, description=description, color=0xbb0000)
                 for k, v in zip(("Username", "Password"), (f"`{username}`", f"`{password}`")):
                     embed.add_field(name=k, value=v, inline=False)
                 pinmessage = await channel.send(embed=embed)
@@ -153,19 +153,19 @@ async def on_message(message):
                 await message.delete()
                 return
             await message.channel.send(
-                embed=utils.create_embed("You need to be an officer in the CTF category")
+                embed=discord.utils.create_embed("You need to be an officer in the CTF category")
             )
             return
         if split[0] == "!chal":
             if message.channel.category_id == CTF_CATEGORY_ID:
                 if len(split) == 1:
                     await message.channel.send(
-                        embed=utils.create_embed("Must provide a challenge name")
+                        embed=discord.utils.create_embed("Must provide a challenge name")
                     )
                     return
                 if len(split) != 2:
                     await message.channel.send(
-                        embed=utils.create_embed("There can be no spaces in the challenge name")
+                        embed=discord.utils.create_embed("There can be no spaces in the challenge name")
                     )
                     return
                 ctf_name = message.channel.name.lower()
@@ -175,28 +175,50 @@ async def on_message(message):
                         for chan in category.text_channels:
                             if chan.name.lower() == chal_name.lower():
                                 await message.channel.send(
-                                    embed=utils.create_embed(
-                                        f"A channel for this challenge has already been created! Click [here](https://discordapp.com/channels/{GUILD}/{chan.id}/) to join the discussion."
+                                    embed=discord.utils.create_embed(
+                                        f"A channel for this challenge has already been created! Click [here](https://discordapp.com/channels/{GUILD_ID}/{chan.id}/) to join the discussion."
                                     )
                                 )
                                 return
                         chan = await category.create_text_channel(
                             chal_name,
                             position=len(category.text_channels),
-                            topic=f"{message.channel.name}: {chalname}",
+                            topic=f"{message.channel.name}: {chal_name}",
                         )
                         await message.channel.send(
-                            embed=utils.create_embed(
+                            embed=discord.utils.create_embed(
                                 f"Channel created! Click [here](https://discordapp.com/channels/{GUILD_ID}/{chan.id}/) to go there."
                             )
                         )
                         return
                 await message.channel.send(
-                    embed=utils.create_embed(
+                    embed=discord.utils.create_embed(
                         f"Could not find the category for this CTF"
                     )
                 )
+        if split[0] == "!archive":
+            if message.channel.category_id == CTF_CATEGORY_ID:
+                for category, chal_channels in client.guild.by_category():
+                    if message.channel.name.lower() + " challenges" == category.name.lower():
+                        for channel in chal_channels:
+                            await archive_channel(channel, message.channel)
+                        break
+
+                await message.channel.edit(category=CTF_ARCHIVE_CATEOGRY_ID)
+                await message.channel.edit(position=0)
+            elif message.channel.category.name.endswith(" challenges"):
+                ctf = message.channel.category.name[:-len(" challenges")].replace(" ", "-")
+                for chan in client.ctfs.text_channels:
+                    if chan.name.lower() == ctf.lower():
+                        await archive_channel(message.channel, chan)
+                        return
+                
+                await message.channel.send(
+                    embed=discord.utils.create_embed(f"Could not find live CTF channel {ctf}. Was it accidentally moved?")
+                )            
+            return
         return
+        
 
     if len(split) == 2 and split[0] == "!connect":
         await check_osuauth_token_and_give_role(message.author, split[1])
@@ -211,6 +233,28 @@ async def on_message(message):
     #     return
 
     await message.author.dm_channel.send("Bad message")
+
+async def archive_channel(channel, ctf_channel):
+    fname = f"{ctf_channel.name}_{channel.name}_log.txt"
+    f = open(fname, "w")
+    async for m in channel.history(limit=10000, oldest_first=True):
+        f.write(f"[{m.created_at.replace().strftime('%Y-%m-%d %I:%M %p')} UTC] {m.author.display_name}: {m.content}\n{' '.join(map(lambda x: x.url, m.attachments))}\n")
+    f.close()
+
+    f = open(fname, "rb")
+    await ctf_channel.send(
+        embed = discord.utils.create_embed(f"Discussion for the challenge {channel.name} has been archived. A text log of the conversation is attached."),
+        file = discord.File(f)
+    )
+    f.close()
+
+    os.remove(fname)
+
+    cat = channel.category
+    await channel.delete()
+    if len(cat.text_channels) == 0:
+        await cat.delete()
+
 
 async def check_has_role(member, role_name):
     roles = member.roles
