@@ -211,6 +211,13 @@ async def on_message(message):
                     )
                 )
         if split[0] == "!archive":
+            if not check_has_role(message.author, "Officers"):
+                await message.channel.send(
+                    embed=create_embed(
+                        f"Only officers can archive"
+                    )
+                )
+                return
             if message.channel.category_id == CTF_CATEGORY_ID:
                 if message.channel.name.lower().endswith("general"):
                     await message.channel.send(
