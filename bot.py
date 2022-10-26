@@ -92,6 +92,13 @@ async def on_member_join(member):
         f"Welcome to Cyber Security Club @ Ohio State!\n\nIf you are an OSU student, go to https://auth.osucyber.club to:\n- Link your Discord account. This will give you access to non-public channels.\n-Signup for the mailing list. (You can also signup at http://mailinglist.osucyber.club)\n\n"
     )
 
+async def iterate_history(channel, sender):
+    count = 0
+    async for msg in channel.history(limit=None):
+        if msg.author == sender:
+            count += 1
+            await msg.delete()
+    return count
 
 @client.event
 async def on_message(message):
@@ -254,6 +261,26 @@ async def on_message(message):
                 await message.channel.send(
                     embed=create_embed(f"Could not find live CTF channel {ctf}. Was it accidentally moved?")
                 )            
+            return
+        if split[0] == "!lazerbeam":
+            sender = message.author
+            if not check_has_role(sender, "Officers"):
+                return
+            await message.channel.send(
+                embed=create_embed(f"Ok, {sender.name}, I'll start lazer beaming your messages. This will take a while; I'll let you know when I'm done.")
+            )
+            count = 0
+            for chan in guild.channels:
+                if isinstance(chan, discord.TextChannel):
+                    try:
+                        count_chan = await iterate_history(chan, sender)
+                        #print(f"Found {count_chan} messages in channel #{chan.name}")
+                        count += count_chan
+                    except:
+                        print(f"Failed to lazer beam {chan.name} for {sender.name}")
+            await message.channel.send(
+                embed=create_embed(f"Lazer beam'd {count} messages from {sender.name}")
+            )
             return
         return
         
