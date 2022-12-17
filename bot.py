@@ -343,6 +343,7 @@ def check_has_role(member, role_name):
 async def make_reaction_role(message):
     if message.author.id != 633048088965021697:
         await message.channel.send("Not authorized")
+        return
 
     split = message.content.split()
 
